@@ -65,6 +65,7 @@ def load_data(mode='train'):
 
             # label = np.reshape(labels[i], [1]).astype('float32')
             label = np.reshape(labels[i],[1]).astype('int64')
+            print("label",label.shape,label)
             imgs_list.append(img)
             labels_list.append(label)
             if len(imgs_list) == BATCHSIZE:

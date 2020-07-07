@@ -191,7 +191,6 @@ with fluid.dygraph.guard(place):
                 loss = fluid.layers.cross_entropy(predict,label)
                 avg_loss = fluid.layers.mean(loss)
                 # 修改4-多GPU训练需要对Loss做出调整，并聚合不同设备上的参数梯度
-                avg_loss = mnist.
                 if batch_id%200 ==0:
                     print("index:{},epoch:{},batch:{},loss is :{}".format(index,epoch_id,batch_id,avg_loss.numpy()))
                     avg_loss_list.append(avg_loss.numpy()[0])

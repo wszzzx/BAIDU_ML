@@ -96,9 +96,10 @@ class MNIST(fluid.dygraph.Layer):
          x = self.pool1(x)
          x = self.conv2(x)
          x = self.pool2(x)
-         x = x.numpy()
-         x = np.reshape(x,[100,-1])
-         x = fluid.dygraph.to_variable(x)
+         # x = x.numpy()
+         # x = np.reshape(x,[100,-1])
+         # x = fluid.dygraph.to_variable(x)
+         x = fluid.layers.reshape(x,shape=[100,-1])
          # x = fluid.layers.reshape(x,shape=[100.-1])
          x = self.linear(x)
          return x
