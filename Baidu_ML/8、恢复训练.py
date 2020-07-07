@@ -1,41 +1,20 @@
-from PIL import Image
-import numpy as np
+import paddle
 import paddle.fluid as fluid
 from paddle.fluid.dygraph.nn import Linear,Conv2D,Pool2D
-import cv2
-import random
-import json
+# from paddle.fluid.dygraph.nn import FC
+import numpy as np
+import os
 import gzip
+import json
+import random
+from tb_paddle import SummaryWriter
+data_writer = SummaryWriter(logdir='log/data')
 
-# img_path = "example_0.png"
-# im = cv2.imread(img_path,0)
-# print(im.shape)
-# im1 = cv2.resize(im,(28,28))
-# print(im1.shape,im1)
-# im2 = 1 - im/127.5
-# print("im2",im2)
-
-def load_image(img_path):
-    img_path = "example_0.png"
-    im = cv2.imread(img_path, 0)
-    # print(im.shape)
-    im1 = cv2.resize(im, (28, 28))
-    # print(im1.shape, im1)
-    im1 = im1.reshape(1,-1).astype(np.float32)
-    im2 = 2 - im1 / 127.5
-    print("im2", im2.shape,im2)
-    return im2
-
-    # im = Image.open(img_path).convert('L')
-    # im = im.resize((28,28),Image.ANTIALIAS)
-    # print("shape",type(im))
-    # im = np.array(im).reshape(1,-1).astype(np.float32)
-    # print("shape", im.shape)
-    # print("im1",im)
-    # # im = 2 -im/127.5
-    # im = 1 - im/127.5
-    # print("im2", im)
-    # return im
+#计算分类准确率，观察模型训练结果
+#检查模型训练过程，识别潜在问题
+#加入校验和测试，更好评价模型效果
+#加入正则化，避免模型过拟合
+#可视化分析
 
 def load_data(mode='train'):
     # 数据文件
@@ -168,61 +147,14 @@ class MNIST(fluid.dygraph.Layer):
          else:
             return outputs5
 
-# with fluid.dygraph.guard():
-#     # 预测单张图片
-#     # model = MNIST("mnist")
-#     # img_path = "example_0.png"
-#     # params_file_path = 'mnist'
-#     # model_dict,_ = fluid.load_dygraph("mnist")
-#     # model.load_dict(model_dict)
-#     # model.eval()
-#     # tensor_img = load_image(img_path)
-#     # print("tensor_img",tensor_img)
-#     # result = model.forward(fluid.dygraph.to_variable(tensor_img))
-#     # print("predict num is : {}".format(result.numpy().astype('int32')))
-#     print('start evaluation ......')
-#     model = MNIST('mnist')
-#     model_static_dict,_ = fluid.dygraph.load_dygraph('mnist')
-#     model.load_dict(model_static_dict)
-#     model.eval()
-#     eval_loader = load_data('eval')
-#     acc_set = []
-#     avg_loss_set = []
-#     for batch_id,data in enumerate(eval_loader()):
-#         x_data,y_data = data
-#         img = fluid.dygraph.to_variable(x_data)
-#         label = fluid.dygraph.to_variable(y_data)
-#         prediction,acc = model.forward(img,label)
-#         loss  = fluid.layers.cross_entropy(prediction,label)
-#         avg_loss = fluid.layers.mean(loss)
-#         acc_set.append(float(acc.numpy()))
-#         avg_loss_set.append(float(avg_loss.numpy()))
-#     acc_val_mean = np.array(acc_set).mean()
-#     avg_loss_val_mean = np.array(avg_loss_set).mean()
-#
-#     print('loss={}, acc={}'.format(avg_loss_val_mean, acc_val_mean))
+# 异步处理需要添加三行代码
 
-
-# with fluid.dygraph.guard():
-#     params_dict,opt_dict = fluid.load_dygraph(params_path)
-#     model = MNIST('mnist')
-#     model.load_dict(params_dict)
-#
-#     EPOCH_NUM = 5
-#     BATCH_SIZE = 100
-#     total_steps = (int(60000//BATCH_SIZE) + 1) * EPOCH_NUM
-#     lr = fluid.dygraph.PolynomialDecay(0.01,total_steps,0.001)
-#     optimizer = fluid.optimizer.AdamOptimizer(learning_rate=lr,parameter_list=model.parameters())
-#     optimizer.set_dict(opt_dict)
-
-# params_path = "./checkpoint/mnist_epoch0"
-params_path = "checkpoint/mnist_epoch0"
+#异步代码一
 place = fluid.CPUPlace()
 
 with fluid.dygraph.guard(place):
-    params_dict, opt_dict = fluid.load_dygraph(params_path)
     model = MNIST("mnist")
-    model.set_dict(params_dict)
+    model.train()
     train_loader = load_data('train')
 
     # 异步代码二 定义DataLoader对象用于加载Python生成器产生的数据
@@ -237,8 +169,7 @@ with fluid.dygraph.guard(place):
     total_steps = (int(60000/100)+1)*EPOCH_NUM
     lr = fluid.dygraph.PolynomialDecay(0.01,total_steps,0.001)
     optimizer = fluid.optimizer.AdamOptimizer(learning_rate=lr,parameter_list=model.parameters())
-    optimizer.set_dict(opt_dict)
-    for epoch_id in range(1,EPOCH_NUM):
+    for epoch_id in range(EPOCH_NUM):
         # for batch_id,data in enumerate(data_generator("train")):
         for batch_id,data in enumerate(train_loader()):
 
@@ -259,15 +190,12 @@ with fluid.dygraph.guard(place):
             avg_loss = fluid.layers.mean(loss)
             if batch_id%100 ==0:
                 print("epoch:{},batch:{},loss is :{},acc:{}".format(epoch_id,batch_id,avg_loss.numpy(),avg_acc.numpy()))
-                # data_writer.add_scalar("train/loss",avg_loss.numpy(),iter)
-                # data_writer.add_scalar("train/accuracy",avg_acc.numpy(),iter)
+                data_writer.add_scalar("train/loss",avg_loss.numpy(),iter)
+                data_writer.add_scalar("train/accuracy",avg_acc.numpy(),iter)
                 iter +=100
             avg_loss.backward()
             optimizer.minimize(avg_loss)
             model.clear_gradients()
         fluid.save_dygraph(model.state_dict(),'checkpoint/mnist_epoch{}'.format(epoch_id))
         fluid.save_dygraph(optimizer.state_dict(),'checkpoint/mnist_epoch{}'.format(epoch_id))
-
-
-
 
