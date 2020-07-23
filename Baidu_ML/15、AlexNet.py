@@ -3,7 +3,6 @@ import paddle.fluid as fluid
 import numpy as np
 from paddle.fluid.dygraph.nn import Conv2D,Pool2D,Linear
 
-
 class AlexNet(fluid.dygraph.Layer):
     def __init__(self,num_classes =1):
         super(AlexNet,self).__init__()
@@ -38,29 +37,3 @@ class AlexNet(fluid.dygraph.Layer):
         x = fluid.layers.dropout(x,self.drop_ratio2)
         x = self.fc3(x)
         return x
-
-
-x = np.random.randn(1,3,224,224)
-x = x.astype('float32')
-with fluid.dygraph.guard():
-    # 创建LeNet类的实例，指定模型名称和分类的类别数目
-    m = AlexNet()
-    # 通过调用LeNet从基类继承的sublayers()函数，
-    # 查看LeNet中所包含的子层
-    print(m.sublayers())
-    x = fluid.dygraph.to_variable(x)
-    for item in m.sublayers():
-        # item是LeNet类中的一个子层
-        # 查看经过子层之后的输出数据形状
-        try:
-            x = item(x)
-        except:
-            x = fluid.layers.reshape(x, [x.shape[0], -1])
-            x = item(x)
-        if len(item.parameters())==2:
-            # 查看卷积和全连接层的数据和参数的形状，
-            # 其中item.parameters()[0]是权重参数w，item.parameters()[1]是偏置参数b
-            print(item.full_name(), x.shape, item.parameters()[0].shape, item.parameters()[1].shape)
-        else:
-            # 池化层没有参数
-            print(item.full_name(), x.shape)
